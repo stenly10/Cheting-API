@@ -28,6 +28,23 @@ namespace Cheting.Controllers
             }
             return Ok(conversation);
         }
+
+        [HttpGet("all")]
+        public IActionResult GetAllConversations()
+        {
+            var conversations = _context.Conversations.ToList();
+            return Ok(conversations);
+        }
+
+        [HttpGet("user/{userId}")]
+        public IActionResult GetAllConversationsForUser(Guid userId)
+        {
+            var conversations = _context.Conversations
+                .Where(c => c.Users.Any(user => user.Id == userId))
+                .ToList();
+            return Ok(conversations);
+        }
+
         [HttpPost("create")]
         public IActionResult CreateConversation([FromBody] Conversation conversation)
         {
