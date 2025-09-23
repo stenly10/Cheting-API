@@ -3,6 +3,10 @@ using Cheting.Data;
 using Cheting.Models;
 using Cheting.Dtos;
 using Cheting.Mappers;
+using Cheting.RabbitMQ;
+using System;
+using System.Threading.Tasks;
+using System.Text.Json;
 
 
 namespace Cheting.Controllers
@@ -21,7 +25,7 @@ namespace Cheting.Controllers
         [HttpGet("{id}")]
         public IActionResult GetConversationById(Guid id)
         {
-            var conversation = _context.Chats.Find(id);
+            var conversation = _context.Conversations.Find(id);
             if (conversation == null)
             {
                 return NotFound();
@@ -46,15 +50,32 @@ namespace Cheting.Controllers
         }
 
         [HttpPost("create")]
-        public IActionResult CreateConversation([FromBody] Conversation conversation)
+        public async Task<IActionResult> CreateConversation([FromBody] ConversationRequestDto conversationRequestDto)
         {
+            var users = _context.Users
+                .Where(u => conversationRequestDto.UserIds.Contains(u.Id))
+                .ToList();
+
+            var conversation = new Conversation
+            {
+                Id = Guid.NewGuid(),
+                Users = users
+            };
+            await RabbitMQService.CreateExchange("conversation-" + conversation.Id.ToString());
+
+            foreach (var u in users)
+            {
+                await RabbitMQService.CreateQueue("conversation-" + conversation.Id.ToString() + "-username-" + u.Username, "conversation-" + conversation.Id.ToString());
+            }
+
             _context.Conversations.Add(conversation);
             _context.SaveChanges();
-            return CreatedAtAction(nameof(GetConversationById), new { id = conversation.Id }, conversation);
+
+            return Created();
         }
 
         [HttpPost("{id}/add-chat")]
-        public IActionResult AddChatToConversation(Guid id, [FromBody] ChatRequestDto chatRequestDto)
+        public async Task<IActionResult> AddChatToConversation(Guid id, [FromBody] ChatRequestDto chatRequestDto)
         {
             var user = _context.Users.Find(chatRequestDto.UserId);
             if (user == null)
@@ -75,6 +96,8 @@ namespace Cheting.Controllers
             _context.Conversations.Update(conversation);
 
             _context.SaveChanges();
+
+            await RabbitMQService.PublishMessage("conversation-" + conversation.Id.ToString(), JsonSerializer.Serialize(chat));
 
             return CreatedAtAction(nameof(AddChatToConversation), new { id = chat.Id }, chat);
         }
