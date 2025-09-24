@@ -24,7 +24,7 @@ namespace Cheting.RabbitMQ
                                          exclusive: false,
                                          autoDelete: false,
                                          arguments: null);
-            await channel.QueueBindAsync(queue: queueName, exchange: exchangeName, routingKey: "");
+            await channel.QueueBindAsync(queue: queueName, exchange: exchangeName, routingKey: routingKey);
         }
 
         public static async Task PublishMessage(string exchangeName, string message, string routingKey = "")
@@ -37,33 +37,24 @@ namespace Cheting.RabbitMQ
                                      body: body);
         }
 
-        public static async Task<string> ConsumeMessage(string queueName, int timeout = 5000)
+        public static async Task<List<String>> ConsumeAllMessage(string queueName, int timeout = 5000)
         {
-            var connection = await _factory.CreateConnectionAsync();
-            var channel = await connection.CreateChannelAsync();
+            using var connection = await _factory.CreateConnectionAsync();
+            using var channel = await connection.CreateChannelAsync();
 
-            var tcs = new TaskCompletionSource<string>();
-            var consumer = new AsyncEventingBasicConsumer(channel);
+            var messages = new List<string>();
 
-            consumer.ReceivedAsync += async (model, ea) =>
+            while (true)
             {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                tcs.TrySetResult(message);
+                var result = await channel.BasicGetAsync(queueName, autoAck: true);
+                if (result == null)
+                    break;
 
-                await channel.CloseAsync();
-                await connection.CloseAsync();
-            };
+                var message = Encoding.UTF8.GetString(result.Body.ToArray());
+                messages.Add(message);
+            }
 
-            await channel.BasicConsumeAsync(queue: queueName,
-                                    autoAck: true,
-                                    consumer: consumer);
-
-            var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
-            if (completed == tcs.Task)
-                return await tcs.Task;
-            else
-                return "";
+            return messages;
         }
     }
 }

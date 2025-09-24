@@ -25,12 +25,12 @@ namespace Cheting.Controllers
         [HttpGet("{id}")]
         public IActionResult GetConversationById([FromRoute] Guid id)
         {
-            var conversation = _context.Conversations.Find(id);
+            var conversation = _context.Conversations.Include(c => c.Users).First(c => c.Id == id);
             if (conversation == null)
             {
                 return NotFound();
             }
-            return Ok(conversation);
+            return Ok(conversation.ToConversationResponseDto());
         }
 
         [HttpGet("all")]
@@ -66,14 +66,14 @@ namespace Cheting.Controllers
             _context.Conversations.Add(conversation);
             await _context.SaveChangesAsync();
             
-            await RabbitMQService.CreateExchange("conversation-" + conversation.Id.ToString());
+            await RabbitMQService.CreateExchange("conversation-" + conversation.Id.ToString(), "direct");
 
             foreach (var u in users)
             {
-                await RabbitMQService.CreateQueue("conversation-" + conversation.Id.ToString() + "-username-" + u.Username, "conversation-" + conversation.Id.ToString());
+                await RabbitMQService.CreateQueue("conversation-" + conversation.Id.ToString() + "-username-" + u.Username, "conversation-" + conversation.Id.ToString(), $"username-{u.Username}");
             }
 
-            return CreatedAtAction(nameof(GetConversationById), new { id = conversation.Id }, conversation);
+            return CreatedAtAction(nameof(GetConversationById), new { id = conversation.Id }, conversation.ToConversationResponseDto());
         }
 
         [HttpPost("{id}/add-chat")]
@@ -85,7 +85,7 @@ namespace Cheting.Controllers
                 return NotFound("User not found");
             }
 
-            var conversation = await _context.Conversations.Include(c => c.Chats).FirstAsync(c => c.Id == id);
+            var conversation = await _context.Conversations.Include(c => c.Chats).Include(c => c.Users).FirstAsync(c => c.Id == id);
             if (conversation == null)
             {
                 return NotFound("Conversation not found");
@@ -96,7 +96,9 @@ namespace Cheting.Controllers
 
             await _context.SaveChangesAsync();
 
-            await RabbitMQService.PublishMessage("conversation-" + conversation.Id.ToString(), JsonSerializer.Serialize(chat.ToChatResponseDto()));
+            foreach (var u in conversation.Users)
+                if (u.Id != user.Id)
+                    await RabbitMQService.PublishMessage("conversation-" + conversation.Id.ToString(), JsonSerializer.Serialize(chat.ToChatResponseDto()), $"username-{u.Username}");
 
             return CreatedAtAction(nameof(AddChatToConversation), new { id = chat.Id }, chat.ToChatResponseDto());
         }
