@@ -7,6 +7,7 @@ namespace Cheting.Models
         public required string Name { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public required string Email { get; set; }
-        public List<Conversation> Conversations { get; set; } = new List<Conversation>();
+        public List<Conversation> Conversations { get; set; } = [];
+        public ICollection<Chat> Chats { get; set; } = new List<Chat>();
     }
 }

@@ -4,6 +4,7 @@ using Cheting.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Cheting.Migrations
 {
     [DbContext(typeof(ApplicationDBContext))]
-    partial class ApplicationDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250923104827_UpdateChatConversation")]
+    partial class UpdateChatConversation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -114,7 +117,7 @@ namespace Cheting.Migrations
                         .IsRequired();
 
                     b.HasOne("Cheting.Models.User", "User")
-                        .WithMany("Chats")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -140,11 +143,6 @@ namespace Cheting.Migrations
                 });
 
             modelBuilder.Entity("Cheting.Models.Conversation", b =>
-                {
-                    b.Navigation("Chats");
-                });
-
-            modelBuilder.Entity("Cheting.Models.User", b =>
                 {
                     b.Navigation("Chats");
                 });

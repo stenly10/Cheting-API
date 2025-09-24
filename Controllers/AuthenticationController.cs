@@ -32,7 +32,7 @@ namespace Cheting.Controllers
         }
 
         [HttpGet("users/{id}")]
-        public IActionResult GetUserById(Guid id)
+        public IActionResult GetUserById([FromRoute] Guid id)
         {
             var user = _context.Users.Find(id);
             if (user == null)

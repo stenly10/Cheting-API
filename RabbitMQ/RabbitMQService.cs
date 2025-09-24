@@ -1,4 +1,6 @@
+using System.Text;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Cheting.RabbitMQ
 {
@@ -29,10 +31,39 @@ namespace Cheting.RabbitMQ
         {
             using var connection = await _factory.CreateConnectionAsync();
             using var channel = await connection.CreateChannelAsync();
-            var body = System.Text.Encoding.UTF8.GetBytes(message);
+            var body = Encoding.UTF8.GetBytes(message);
             await channel.BasicPublishAsync(exchange: exchangeName,
                                      routingKey: routingKey,
                                      body: body);
+        }
+
+        public static async Task<string> ConsumeMessage(string queueName, int timeout = 5000)
+        {
+            var connection = await _factory.CreateConnectionAsync();
+            var channel = await connection.CreateChannelAsync();
+
+            var tcs = new TaskCompletionSource<string>();
+            var consumer = new AsyncEventingBasicConsumer(channel);
+
+            consumer.ReceivedAsync += async (model, ea) =>
+            {
+                var body = ea.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                tcs.TrySetResult(message);
+
+                await channel.CloseAsync();
+                await connection.CloseAsync();
+            };
+
+            await channel.BasicConsumeAsync(queue: queueName,
+                                    autoAck: true,
+                                    consumer: consumer);
+
+            var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
+            if (completed == tcs.Task)
+                return await tcs.Task;
+            else
+                return "";
         }
     }
 }

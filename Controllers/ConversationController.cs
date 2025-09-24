@@ -4,9 +4,9 @@ using Cheting.Models;
 using Cheting.Dtos;
 using Cheting.Mappers;
 using Cheting.RabbitMQ;
-using System;
-using System.Threading.Tasks;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 
 namespace Cheting.Controllers
@@ -23,7 +23,7 @@ namespace Cheting.Controllers
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetConversationById(Guid id)
+        public IActionResult GetConversationById([FromRoute] Guid id)
         {
             var conversation = _context.Conversations.Find(id);
             if (conversation == null)
@@ -34,33 +34,38 @@ namespace Cheting.Controllers
         }
 
         [HttpGet("all")]
-        public IActionResult GetAllConversations()
+        public async Task<IActionResult> GetAllConversations()
         {
-            var conversations = _context.Conversations.ToList();
-            return Ok(conversations);
+            var conversations = await _context.Conversations.Include(c => c.Users).ToListAsync();
+            return Ok(conversations.Select(c => c.ToConversationResponseDto()).ToList());
         }
 
         [HttpGet("user/{userId}")]
-        public IActionResult GetAllConversationsForUser(Guid userId)
+        public async Task<IActionResult> GetAllConversationsForUser([FromRoute] Guid userId)
         {
-            var conversations = _context.Conversations
+            var conversations = await _context.Conversations.Include(c => c.Users)
                 .Where(c => c.Users.Any(user => user.Id == userId))
-                .ToList();
-            return Ok(conversations);
+                .ToListAsync();
+                
+            return Ok(conversations.Select(c => c.ToConversationResponseDto()).ToList());
         }
 
         [HttpPost("create")]
         public async Task<IActionResult> CreateConversation([FromBody] ConversationRequestDto conversationRequestDto)
         {
-            var users = _context.Users
+            var users = await _context.Users
                 .Where(u => conversationRequestDto.UserIds.Contains(u.Id))
-                .ToList();
+                .ToListAsync();
 
             var conversation = new Conversation
             {
                 Id = Guid.NewGuid(),
                 Users = users
             };
+
+            _context.Conversations.Add(conversation);
+            await _context.SaveChangesAsync();
+            
             await RabbitMQService.CreateExchange("conversation-" + conversation.Id.ToString());
 
             foreach (var u in users)
@@ -68,38 +73,45 @@ namespace Cheting.Controllers
                 await RabbitMQService.CreateQueue("conversation-" + conversation.Id.ToString() + "-username-" + u.Username, "conversation-" + conversation.Id.ToString());
             }
 
-            _context.Conversations.Add(conversation);
-            _context.SaveChanges();
-
-            return Created();
+            return CreatedAtAction(nameof(GetConversationById), new { id = conversation.Id }, conversation);
         }
 
         [HttpPost("{id}/add-chat")]
-        public async Task<IActionResult> AddChatToConversation(Guid id, [FromBody] ChatRequestDto chatRequestDto)
+        public async Task<IActionResult> AddChatToConversation([FromRoute] Guid id, [FromBody] ChatRequestDto chatRequestDto)
         {
-            var user = _context.Users.Find(chatRequestDto.UserId);
+            var user = await _context.Users.FindAsync(chatRequestDto.UserId);
             if (user == null)
             {
                 return NotFound("User not found");
             }
 
-            var conversation = _context.Conversations.Find(id);
+            var conversation = await _context.Conversations.Include(c => c.Chats).FirstAsync(c => c.Id == id);
             if (conversation == null)
             {
                 return NotFound("Conversation not found");
             }
 
-            var chat = chatRequestDto.ToChat(user);
+            var chat = chatRequestDto.ToChat(user, conversation);
             _context.Chats.Add(chat);
 
-            conversation.Chats.Add(chat);
-            _context.Conversations.Update(conversation);
+            await _context.SaveChangesAsync();
 
-            _context.SaveChanges();
+            await RabbitMQService.PublishMessage("conversation-" + conversation.Id.ToString(), JsonSerializer.Serialize(chat.ToChatResponseDto()));
 
-            await RabbitMQService.PublishMessage("conversation-" + conversation.Id.ToString(), JsonSerializer.Serialize(chat));
-
-            return CreatedAtAction(nameof(AddChatToConversation), new { id = chat.Id }, chat);
+            return CreatedAtAction(nameof(AddChatToConversation), new { id = chat.Id }, chat.ToChatResponseDto());
         }
-    }   
+
+        [HttpGet("{id}/chats")]
+        public IActionResult GetAllChatsForConversation([FromRoute] Guid id)
+        {
+            var conversation = _context.Conversations.Find(id);
+
+            if (conversation == null)
+            {
+                return NotFound("Conversation not found");
+            }
+
+            return Ok(conversation.Chats);
+        }
+    }
 }
