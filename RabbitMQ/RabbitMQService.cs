@@ -37,7 +37,7 @@ namespace Cheting.RabbitMQ
                                      body: body);
         }
 
-        public static async Task<List<String>> ConsumeAllMessage(string queueName, int timeout = 5000)
+        public static async Task<List<string>> ConsumeAllMessage(string queueName, int timeout = 5000)
         {
             using var connection = await _factory.CreateConnectionAsync();
             using var channel = await connection.CreateChannelAsync();
