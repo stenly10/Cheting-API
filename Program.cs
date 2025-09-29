@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Cheting.Data;
+using Cheting.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<ApplicationDBContext>(
     options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddControllers();
+builder.Services.AddScoped<IAuthServices, AuthServices>();
+builder.Services.AddScoped<IConversationServices, ConversationServices>();
+builder.Services.AddScoped<INotificationServices, NotificationServices>();
 
 var app = builder.Build();
 

@@ -6,5 +6,6 @@ namespace Cheting.Dtos
     {
         public required Guid Id { get; set; }
         public required List<UserDto> Users { get; set; }
+        public required DateTime CreatedAt { get; set; }
     }
 }

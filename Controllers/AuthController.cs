@@ -1,8 +1,8 @@
 using Cheting.Data;
-using Cheting.Models;
 using Cheting.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Cheting.Mappers;
+using Cheting.Services;
 
 namespace Cheting.Controllers
 {
@@ -11,10 +11,12 @@ namespace Cheting.Controllers
     public class AuthenticationController : ControllerBase
     {
         private readonly ApplicationDBContext _context;
+        private readonly IAuthServices _authServices;
 
-        public AuthenticationController(ApplicationDBContext context)
+        public AuthenticationController(ApplicationDBContext context, IAuthServices authServices)
         {
             _context = context;
+            _authServices = authServices;
         }
 
         [HttpPost("register")]
@@ -25,9 +27,7 @@ namespace Cheting.Controllers
                 return Conflict("Username already exists");
             }
 
-            var user = dto.ToUser();
-            _context.Users.Add(user);
-            _context.SaveChanges();
+            var user = _authServices.Register(dto);
             return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user.ToUserDto());
         }
 

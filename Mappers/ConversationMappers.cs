@@ -16,7 +16,8 @@ namespace Cheting.Mappers
                     Username = u.Username,
                     Name = u.Name,
                     Email = u.Email
-                })]
+                })],
+                CreatedAt = conversation.CreatedAt
             };
         }
     }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Cheting.Data;
 using Cheting.Dtos;
 using Cheting.RabbitMQ;
+using Cheting.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,35 +13,20 @@ namespace Cheting.Controllers
     public class NotificationController : ControllerBase
     {
         private readonly ApplicationDBContext _context;
-        public NotificationController(ApplicationDBContext context)
+        private readonly INotificationServices _notificationServices;
+        public NotificationController(ApplicationDBContext context, INotificationServices notificationServices)
         {
             _context = context;
+            _notificationServices = notificationServices;
         }
 
         [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetNotificationForUser([FromRoute] Guid userId)
+        public async Task<IActionResult> GetNotificationsForUser([FromRoute] Guid userId)
         {
             var user = await _context.Users.Include(u => u.Conversations).FirstAsync(u => u.Id == userId);
             var conversations = user.Conversations.ToList();
 
-            var messages = new List<ConversationNotificationDto>();
-            
-            foreach (var conversation in conversations)
-            {
-                var conversationNotificationDto = new ConversationNotificationDto
-                {
-                    ConversationId = conversation.Id
-                };
-
-                var conversationMessages = await RabbitMQService.ConsumeAllMessage("conversation-" + conversation.Id.ToString() + "-username-" + user.Username);
-
-                foreach (var message in conversationMessages)
-                {
-                    var newMessage = JsonSerializer.Deserialize<ChatDto>(message);
-                    conversationNotificationDto.Messages.Add(newMessage);
-                }
-                messages.Add(conversationNotificationDto);
-            }
+            var messages = await _notificationServices.GetNotificationsForUser(user, conversations);
 
             return Ok(messages);
         }
