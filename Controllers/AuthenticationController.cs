@@ -28,7 +28,7 @@ namespace Cheting.Controllers
             var user = dto.ToUser();
             _context.Users.Add(user);
             _context.SaveChanges();
-            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user);
+            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user.ToUserDto());
         }
 
         [HttpGet("users/{id}")]
@@ -39,14 +39,14 @@ namespace Cheting.Controllers
             {
                 return NotFound();
             }
-            return Ok(user);
+            return Ok(user.ToUserDto());
         }
 
         [HttpGet("users/all")]
         public IActionResult GetAllUsers()
         {
             var users = _context.Users.ToList();
-            return Ok(users);
+            return Ok(users.Select(u => u.ToUserDto()).ToList());
         }
     }
 }

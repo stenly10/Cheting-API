@@ -15,5 +15,16 @@ namespace Cheting.Mappers
                 Email = dto.Email
             };
         }
+
+        public static UserDto ToUserDto(this User user)
+        {
+            return new UserDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Name = user.Name,
+                Email = user.Email
+            };
+        }
     }
 }
