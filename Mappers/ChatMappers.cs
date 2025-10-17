@@ -26,7 +26,8 @@ namespace Cheting.Mappers
                     Id = chat.User.Id,
                     Username = chat.User.Username,
                     Name = chat.User.Name,
-                    Email = chat.User.Email
+                    Email = chat.User.Email,
+                    Role = chat.User.Role,
                 },
                 Message = chat.Message,
                 CreatedAt = chat.CreatedAt

@@ -3,6 +3,7 @@ using Cheting.Data;
 using Cheting.Dtos;
 using Cheting.RabbitMQ;
 using Cheting.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,7 @@ namespace Cheting.Controllers
             _notificationServices = notificationServices;
         }
 
+        [Authorize(Roles = "User")]
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetNotificationsForUser([FromRoute] Guid userId)
         {

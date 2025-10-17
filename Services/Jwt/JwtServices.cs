@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Extensions.Configuration;
 using System.Text;
 
 namespace Cheting.Services
@@ -15,7 +14,7 @@ namespace Cheting.Services
             _configuration = configuration;
         }
 
-        public string GenerateToken(Guid userId, string email)
+        public string GenerateToken(Guid userId, string email, string role)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
 
@@ -24,6 +23,7 @@ namespace Cheting.Services
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new(JwtRegisteredClaimNames.Sub, userId.ToString()),
                 new(JwtRegisteredClaimNames.Email, email),
+                new("role", role)
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor

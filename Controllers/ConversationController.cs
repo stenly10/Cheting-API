@@ -5,6 +5,7 @@ using Cheting.Mappers;
 using Microsoft.EntityFrameworkCore;
 using Cheting.Services;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace Cheting.Controllers
@@ -22,6 +23,7 @@ namespace Cheting.Controllers
             _conversationServices = conversationServices;
         }
 
+        [Authorize(Roles = "Admin,User")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetConversationById([FromRoute] Guid id)
         {
@@ -33,6 +35,7 @@ namespace Cheting.Controllers
             return Ok(conversation.ToConversationResponseDto());
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("all")]
         public async Task<IActionResult> GetAllConversations()
         {
@@ -40,16 +43,18 @@ namespace Cheting.Controllers
             return Ok(conversations.Select(c => c.ToConversationResponseDto()).ToList());
         }
 
+        [Authorize(Roles = "Admin,User")]
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetAllConversationsForUser([FromRoute] Guid userId)
         {
             var conversations = await _context.Conversations.Include(c => c.Users)
                 .Where(c => c.Users.Any(user => user.Id == userId))
                 .ToListAsync();
-                
+
             return Ok(conversations.Select(c => c.ToConversationResponseDto()).ToList());
         }
 
+        [Authorize(Roles = "Admin,User")]
         [HttpPost("create")]
         public async Task<IActionResult> CreateConversation([FromBody] ConversationRequestDto conversationRequestDto)
         {
@@ -58,6 +63,7 @@ namespace Cheting.Controllers
             return CreatedAtAction(nameof(GetConversationById), new { id = conversation.Id }, conversation.ToConversationResponseDto());
         }
 
+        [Authorize(Roles = "User")]
         [HttpPost("{id}/add-chat")]
         public async Task<IActionResult> AddChatToConversation([FromRoute] Guid id, [FromBody] ChatRequestDto chatRequestDto)
         {
@@ -83,6 +89,7 @@ namespace Cheting.Controllers
             return CreatedAtAction(nameof(AddChatToConversation), new { id = chat.Id }, chat.ToChatResponseDto());
         }
 
+        [Authorize(Roles = "Admin,User")]
         [HttpGet("{id}/chats")]
         public async Task<IActionResult> GetAllChatsForConversation([FromRoute] Guid id)
         {

@@ -3,6 +3,9 @@ using Cheting.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Cheting.Mappers;
 using Cheting.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Cheting.Models;
 
 namespace Cheting.Controllers
 {
@@ -12,6 +15,7 @@ namespace Cheting.Controllers
     {
         private readonly ApplicationDBContext _context;
         private readonly IAuthServices _authServices;
+
 
         public AuthenticationController(ApplicationDBContext context, IAuthServices authServices)
         {
@@ -29,6 +33,20 @@ namespace Cheting.Controllers
 
             var user = _authServices.Register(dto);
             return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user.ToUserDto());
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        {
+
+            var token = await _authServices.Login(dto);
+
+            if (token == "")
+            {
+                return BadRequest("Wrong username/password");
+            }
+            
+            return Ok(token);
         }
 
         [HttpGet("users/{id}")]

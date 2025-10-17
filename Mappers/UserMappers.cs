@@ -23,7 +23,8 @@ namespace Cheting.Mappers
                 Id = user.Id,
                 Username = user.Username,
                 Name = user.Name,
-                Email = user.Email
+                Email = user.Email,
+                Role = user.Role
             };
         }
     }
